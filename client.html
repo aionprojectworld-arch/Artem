@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fast Chat Plus — Клиент</title>
+<style>
+:root{color-scheme:dark;--bg:#090b12;--panel:#141a27;--line:#293247;--text:#f4f5fb;--muted:#9ba6ba;--purple:#806cf5;--purple2:#5e4bd1}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 50% 0,#29204a 0,transparent 48%),var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;min-height:100vh}
+header{height:68px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 max(20px,calc((100% - 900px)/2))}
+.logo{font-size:20px;font-weight:800}.logo span{color:#b9adff}
+select,input,textarea{font:inherit;background:#0b1019;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:12px;outline:none;width:100%}
+select{width:auto}
+input:focus,textarea:focus,select:focus{border-color:var(--purple);box-shadow:0 0 0 2px #806cf533}
+button{font:inherit;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+main{width:min(900px,calc(100% - 28px));margin:35px auto}
+h1{font-size:29px;margin:0 0 8px}h2{font-size:17px;margin:0 0 6px}
+p{color:var(--muted);line-height:1.5}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.intro{padding:22px 24px}
+.form-area{padding:20px 24px;border-top:1px solid var(--line);display:grid;gap:10px}
+label{font-size:12px;color:#c5ccda;margin-top:4px}
+.primary{background:linear-gradient(135deg,var(--purple),var(--purple2));color:white;border:0;border-radius:10px;padding:13px 17px;font-weight:700}
+.primary:hover{filter:brightness(1.12)}
+.full{width:100%}
+.error{color:#ff8989;font-size:12px;min-height:16px}
+.chat{margin-top:20px;display:flex;flex-direction:column;min-height:480px}
+.chat-head{padding:17px 20px;border-bottom:1px solid var(--line)}
+.chat-head small{color:var(--muted)}
+.messages{padding:18px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:300px;max-height:55vh;overflow:auto}
+.empty{margin:auto;text-align:center;color:var(--muted);font-size:13px}
+.message{max-width:82%;align-self:flex-start}
+.message.mine{align-self:flex-end}
+.message b{display:block;color:#c8bdff;font-size:11px;margin:0 4px 5px}
+.bubble{background:#202a3c;border:1px solid var(--line);border-radius:13px 13px 13px 4px;padding:11px 13px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}
+.message.mine .bubble{background:#30285b;border-color:#51458d;border-radius:13px 13px 4px 13px}
+.composer{padding:14px;border-top:1px solid var(--line);display:flex;gap:9px;align-items:flex-end}
+.composer textarea{resize:vertical;min-height:46px;max-height:140px}
+.send{width:48px;min-width:48px;height:46px;border:0;border-radius:10px;background:var(--purple);color:white;font-size:20px}
+.note{background:#2a2417;border:1px solid #594a2a;color:#e8d4a4;border-radius:10px;padding:13px;font-size:12px;line-height:1.5;margin-top:18px}
+footer{text-align:center;color:#6f7a8c;font-size:11px;padding:25px}
+.hidden{display:none!important}
+@media(max-width:600px){header{padding:0 14px}main{margin-top:22px}.intro,.form-area{padding:17px}.messages{max-height:50vh}.message{max-width:94%}}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">⚡ Fast Chat <span>Plus</span></div>
+<select id="language" aria-label="Язык">
+<option value="ru">Русский</option><option value="en">English</option><option value="zh">中文</option>
+</select>
+</header>
+<main>
+<section class="panel" id="register">
+<div class="intro">
+<h1 id="title">Привет! 👋</h1>
+<p id="intro">Введи имя, создай новый чат и напиши сообщение.</p>
+</div>
+<form class="form-area" id="registerForm">
+<label for="name" id="nameLabel">Твоё имя</label>
+<input id="name" maxlength="30" placeholder="Например, Дамир" required>
+<label for="first" id="firstLabel">Первое сообщение</label>
+<textarea id="first" rows="3" maxlength="2000" placeholder="Привет!"></textarea>
+<button class="primary full" id="create" type="submit">Создать чат</button>
+<div class="error" id="registerError"></div>
+</form>
+</section>
+<section class="panel chat hidden" id="chat">
+<div class="chat-head">
+<h2 id="chatTitle">Чат с администратором</h2>
+<small id="roomCode">Демо-чат</small>
+</div>
+<div class="messages" id="messages">
+<div class="empty" id="empty">Пока нет сообщений.</div>
+</div>
+<form class="composer" id="sendForm">
+<textarea id="message" rows="1" maxlength="2000" placeholder="Напиши сообщение..." required></textarea>
+<button class="send" type="submit" aria-label="Отправить">➤</button>
+</form>
+</section>
+<div class="note" id="note">Важно: это статическая демонстрация. Чтобы сообщения клиента появлялись у администратора на другом устройстве, нужно подключить общую онлайн-базу данных и настроить безопасный доступ.</div>
+</main>
+<footer>Fast Chat Plus · Неофициальный демонстрационный проект</footer>
+<script>
+const $=id=>document.getElementById(id);
+const words={
+ru:{title:"Привет! 👋",intro:"Введи имя, создай новый чат и напиши сообщение.",name:"Твоё имя",first:"Первое сообщение",create:"Создать чат",chat:"Чат с администратором",placeholder:"Напиши сообщение...",empty:"Пока нет сообщений.",note:"Важно: это статическая демонстрация. Чтобы сообщения клиента появлялись у администратора на другом устройстве, нужно подключить общую онлайн-базу данных и настроить безопасный доступ.",error:"Введи имя и первое сообщение."},
+en:{title:"Hello! 👋",intro:"Enter your name, create a chat and send a message.",name:"Your name",first:"First message",create:"Create chat",chat:"Chat with administrator",placeholder:"Write a message...",empty:"No messages yet.",note:"This is a static demo. To share messages with an administrator on another device, connect a shared online database and configure secure access.",error:"Enter your name and first message."},
+zh:{title:"你好！👋",intro:"输入名字，创建聊天并发送消息。",name:"你的名字",first:"第一条消息",create:"创建聊天",chat:"与管理员聊天",placeholder:"输入消息...",empty:"还没有消息。",note:"这是静态演示。若要在另一台设备上与管理员共享消息，需要连接在线数据库并设置安全访问。",error:"请输入名字和第一条消息。"}
+};
+let language="ru",clientName="",items=[];
+function t(){return words[language]||words.ru}
+function applyLanguage(){
+const x=t();document.documentElement.lang=language;
+$("title").textContent=x.title;$("intro").textContent=x.intro;
+$("nameLabel").textContent=x.name;$("firstLabel").textContent=x.first;
+$("create").textContent=x.create;$("chatTitle").textContent=x.chat;
+$("message").placeholder=x.placeholder;$("note").textContent=x.note;
+$("empty").textContent=x.empty;
+}
+function addMessage(text,from){
+const empty=$("messages").querySelector(".empty");if(empty)empty.remove();
+const row=document.createElement("div");row.className="message"+(from==="client"?" mine":"");
+const who=document.createElement("b");who.textContent=from==="client"?clientName:"Администратор";
+const bubble=document.createElement("div");bubble.className="bubble";bubble.textContent=text;
+row.append(who,bubble);$("messages").append(row);$("messages").scrollTop=$("messages").scrollHeight;
+}
+$("language").addEventListener("change",e=>{language=e.target.value;applyLanguage()});
+$("registerForm").addEventListener("submit",e=>{
+e.preventDefault();clientName=$("name").value.trim();const first=$("first").value.trim();
+if(!clientName||!first){$("registerError").textContent=t().error;return}
+$("register").classList.add("hidden");$("chat").classList.remove("hidden");
+$("roomCode").textContent="Имя: "+clientName+" · Локальная демоверсия";
+addMessage(first,"client");
+});
+$("sendForm").addEventListener("submit",e=>{
+e.preventDefault();const text=$("message").value.trim();if(!text)return;
+addMessage(text,"client");$("message").value="";
+});
+$("message").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("sendForm").requestSubmit()}});
+applyLanguage();
+</script>
+</body>
+</html>
